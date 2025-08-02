@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 using System;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Threading;
 using Microsoft.JavaScript.NodeApi.Interop;
@@ -78,6 +79,7 @@ public sealed class JSValueScope : IDisposable
     private readonly nint _scopeHandle;
 
     [ThreadStatic] private static JSValueScope? s_currentScope;
+    [ThreadStatic] private static Dictionary<napi_env, JSValueScope?> s_envSpecificScopes = new();
 
     public JSValueScopeType ScopeType { get; }
 
@@ -175,7 +177,7 @@ public sealed class JSValueScope : IDisposable
         if (scopeType == JSValueScopeType.NoContext)
         {
             // A NoContext scope can inherit the env from a parent NoContext scope.
-            _parentScope = s_currentScope;
+            _parentScope = (env.IsNull) ? s_currentScope : s_envSpecificScopes.GetValueOrDefault(env, null);
             if (_parentScope != null && _parentScope.ScopeType != JSValueScopeType.NoContext)
             {
                 throw new InvalidOperationException(
@@ -197,7 +199,7 @@ public sealed class JSValueScope : IDisposable
         }
         else if (scopeType == JSValueScopeType.Root)
         {
-            _parentScope = s_currentScope;
+            _parentScope = (env.IsNull) ? s_currentScope : s_envSpecificScopes.GetValueOrDefault(env, null);
             if (_parentScope != null)
             {
                 if (_parentScope.ScopeType == JSValueScopeType.Root)
@@ -230,7 +232,7 @@ public sealed class JSValueScope : IDisposable
         }
         else
         {
-            _parentScope = s_currentScope;
+            _parentScope = (env.IsNull) ? s_currentScope : s_envSpecificScopes.GetValueOrDefault(env, null);
 
             if (scopeType == JSValueScopeType.Module &&
                 _parentScope != null && _parentScope.ScopeType == JSValueScopeType.Module)
@@ -317,7 +319,7 @@ public sealed class JSValueScope : IDisposable
             _ => default,
         };
 
-        JSValueScope? previousScope = s_currentScope;
+        JSValueScope? previousScope = s_envSpecificScopes.GetValueOrDefault(env, null);
         try
         {
             s_currentScope = this;
@@ -353,6 +355,8 @@ public sealed class JSValueScope : IDisposable
             s_currentScope = previousScope;
             throw;
         }
+
+        s_envSpecificScopes[env] = s_currentScope;
     }
 
     public void Dispose()
@@ -381,6 +385,7 @@ public sealed class JSValueScope : IDisposable
         }
 
         s_currentScope = _parentScope;
+        s_envSpecificScopes[_env] = _parentScope;
     }
 
     public JSValue Escape(JSValue value)
@@ -420,7 +425,7 @@ public sealed class JSValueScope : IDisposable
     /// thread.</exception>
     internal void ThrowIfInvalidThreadAccess()
     {
-        if (s_currentScope?._env != _env)
+        if ((!s_envSpecificScopes.ContainsKey(_env) || s_envSpecificScopes[_env] == null) && (s_currentScope?._env != _env))
         {
             throw new JSInvalidThreadAccessException(currentScope: s_currentScope, targetScope: this);
         }
