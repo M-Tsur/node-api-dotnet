@@ -99,7 +99,7 @@ function importAotModule(moduleName) {
     /// An MSBuild task during the AOT publish process sets the `dotnet` variable to undefined.
     /// </remarks>
     private const string LoadModuleCJS = @"
-const dotnet = require('node-api-dotnet/$(TargetFramework)');
+const dotnet = function () { try { return require('node-api-dotnet/$(TargetFramework)'); } catch { return undefined; } }();
 const path = require('node:path');
 // @ts-ignore - https://github.com/DefinitelyTyped/DefinitelyTyped/discussions/65252
 const { dlopen, platform, arch } = require('node:process');
