@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
     <AssemblyName>Microsoft.JavaScript.NodeApi.DotNetHost</AssemblyName>
     <RootNamespace>Microsoft.JavaScript.NodeApi.DotNetHost</RootNamespace>
     <IsPackable>true</IsPackable>
@@ -15,7 +16,7 @@
   <ItemGroup>
     <ProjectReference Include="..\NodeApi\NodeApi.csproj" GeneratePathProperty="true" PrivateAssets="all" />
   </ItemGroup>
-  
+
   <ItemGroup>
     <None Pack="true" PackagePath="\" Include="..\..\README.md" />
   </ItemGroup>
